@@ -1,0 +1,3962 @@
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<title>환경정보 등록 | 환경정보공개시스템</title>
+<link href="/renew/css/contents.css?version=03" rel="stylesheet" type="text/css"/>
+<script src="/renew/js/jquery-1.11.1.min.js" type="text/javascript"></script>
+<script src="/renew/js/jquery.print.js" type="text/javascript"></script>
+<script src="/renew/js/common/printThis.js" type="text/javascript"></script>
+<script src="/renew/js/FileSaver.js" type="text/javascript"></script>
+<script src="/renew/js/jquery.wordexport.js" type="text/javascript"></script>
+<script src="/renew/js/jquery.numberCut.js" type="text/javascript"></script>
+<script src="/renew/js/jquery.tmpl.js" type="text/javascript"></script>
+<script src="/renew/js/common/comm.js" type="text/javascript"></script>
+<script src="/renew/js/common/baseInclude.js" type="text/javascript"></script>
+<script src="/renew/js/big.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+var dsAll = new TDataSet();
+var globalFileForPrint;
+var oepn_yn = "Y";
+
+$(document).ready(function(){
+	
+	//화면로딩 시 전체선택
+	$(".link:visible").each(function(index, item){
+		$(this).closest("div").find("input").prop("checked", true);
+	});
+	
+	$(".inquiry_cont").hide();
+	$(".tbl_inquiry .link:eq(0)").addClass("on").show();
+	$(".inquiry_cont:first").show();
+	
+	$(".tbl_inquiry .link").click(function() {
+		$(".tbl_inquiry .link").removeClass("on"); 
+		$(this).addClass("on");
+		$(".inquiry_cont").hide(); 
+		var activeTab = $(this).attr("href");
+		$(activeTab).fadeIn(); 
+		return false;
+	});
+	
+	/* var selectSection4Print = "";
+	
+	$('input:checkbox[name="list_select"]').each(function(index, item){
+		if($(this).is(":checked")){
+			selectSection4Print += "#inquiry"+$(this).val()+",";
+		}
+	});
+	selectSection4Print = selectSection4Print.substring(0,selectSection4Print.length-1);
+	
+	$(selectSection4Print).show(); */
+	
+	$.each($("a[href^=#inquiry]"),function(i,obj){
+		if(i!=0){
+			$($(obj).attr("href")).prepend("<h3 style='margin-top:30px;margin-bottom:5px;'>"+$(obj).text()+"</h3>");
+		}else{
+			$($(obj).attr("href")).prepend("<h3 style='margin-bottom:5px;'>"+$(obj).text()+"</h3>");
+		}
+	});
+	
+	
+	$("#move").click(function(){
+		var comp_div="";
+		$("select[name=comp_id]").find("option").each(function(){
+			$("select[name=comp_id]").find("option").each(function(){
+				if($(this).val()==$("select[name=comp_id]").val()){
+					comp_div = $(this).attr("comp_div");
+				}
+			})
+		})
+		
+		location.href = "/user/register/viewUserSearch2.do?YEAR="+$("select[name=year]").val()+"&COMP_ID="+$("select[name=comp_id]").val()+"&CUST_ID=&COMP_DIV="+comp_div;
+		
+	});
+
+	$("#checkAll_N").on("click",function(){
+		checkAll("N");
+		
+	});
+	$("#checkAll_Y").on("click",function(){
+		checkAll("Y");
+	});
+	
+	if(oepn_yn == "Y"){
+		$("#compSearchSelect").hide();
+		$("#totalInfoPopBtn").show();
+	}
+	
+	replaceToeToTj({
+		calc : {
+			SE08090001 : function(opt){
+				opt = opt || {};
+				
+				if(opt.year < 2021){
+					opt.value = exchangeEnergy("TOE", "TJ", opt.value);
+				}
+				opt.value = exchangeEnergy.toFixed(opt.value,3);
+				
+				var per;
+				if(opt.div.find(".postValue").length){
+					if(opt.year < 2021){
+						opt.postValue = exchangeEnergy("TOE", "TJ", opt.postValue);
+					}
+					opt.postValue = exchangeEnergy.toFixed(opt.postValue,3);
+					
+					if(opt.postValue != 0){
+						per = (opt.value - opt.postValue) * 100 / opt.postValue;
+						per = exchangeEnergy.toFixed(per,3);
+					}
+				}
+				
+				return {
+					div : opt.div,
+					itemId : opt.itemId,
+					year : opt.year,
+					value : opt.value,
+					postValue : opt.postValue,
+					per : per,
+				};
+			},
+		},
+		draw : {
+			SE08090001 : function(opt){
+				var html = "";
+				html += exchangeEnergy.comma(opt.postValue);
+				html += " TJ";
+				
+				var formPer;
+				
+				if(opt.postValue != 0){
+					if(opt.per == 0){
+						formPer = opt.formEquals;
+					}else if(opt.per < 0){
+						formPer = opt.formSmall;
+						formPer.find(".per").text(opt.per);
+					}else{
+						formPer = opt.formLarge;
+						formPer.find(".per").text(opt.per);
+					}
+				}else{
+					formPer = opt.formEmpty;
+				}
+				
+				html += " " + formPer.html();
+				
+				opt.div.after(html);
+			},
+		},
+	});
+});
+
+/* 인쇄 */
+function print(){
+
+	if (!$('input:checkbox[name="list_select"]').is(":checked")) {
+		alert("선택된 항목이 없습니다.");
+		return;
+	}
+
+	var selectSection4Print = "";
+	
+	$('input:checkbox[name="list_select"]').each(function(index, item){
+		if($(this).is(":checked")){
+			selectSection4Print += "#inquiry"+$(this).val()+",";
+		}
+	});
+	selectSection4Print = selectSection4Print.substring(0,selectSection4Print.length-1);
+	
+	$(selectSection4Print).show().printThis();
+	setTimeout(function(){
+		$(selectSection4Print).hide();
+		$($(".check_wrap").find(".link.on").attr("href")).show();
+	},1000);
+}
+
+function downloadFile(file_id,file_ext){
+	
+	$("#FILE_ID").val(file_id);
+	$("#FILE_EXT").val(file_ext);
+	
+	//window.open("/user/register/downloadFile.do?FILE_ID="+file_id+"&FILE_EXT="+file_ext);
+	
+	$("#fileForm").attr("action", "/user/register/downloadFile.do");
+	$("#fileForm").submit();
+
+}
+
+function checkAll(type){
+	if($("#checkAll_"+type).is(":checked") == true){
+		$(".link:visible").each(function(index, item){
+			if($(this).closest("div").find("input").attr("duty") == type){
+				$(this).closest("div").find("input").prop("checked", true);
+			}
+		});
+	}else{
+		$(".link:visible").each(function(index, item){
+			if($(this).closest("div").find("input").attr("duty") == type){
+				$(this).closest("div").find("input").prop("checked", false);
+			}
+		});
+	}
+}
+
+function totalInfoPop(_year,_compId,_compDiv){
+	var url = "/member/open/verifyTotalInfoPop.do?year=" + _year + "&compId=" + _compId + "&compDiv=" + _compDiv;
+	window.open(url, "totalInfoPop", "width=1200,height=850, scrollbars=1");
+}
+</script>
+<style>
+	.colright table td,.colright table th{border-top: 1px solid #000;border-bottom: 1px solid #000;border-right: 1px solid #000;}
+	.colright table {border: 1px solid #000;border-top:0;}
+	.colright table.duplication{border: 1px double #000;width: 100%;}
+	.colright table.type2 tbody{border-top: 0px;}
+ 	.colright table.type2 tr:first-child th{border-top: 0px;}
+	.colright table.type2 tr:first-child td{border-top: 0px;} 
+ 	.colright table.duplication:last-child tr:last-child th{border-left:0px;border-top: 0px;border-right: 1px double;border-bottom: 2px solid;}
+	.colright table.duplication:last-child tr:last-child td{border-left:0px;border-top: 0px;border-right: 1px double;border-bottom: 2px solid;} 
+	.inquiry_cont{margin-top: 40px;}
+</style>
+<script src="/static/js/common/exchangeEnergy.js"></script><script src="/static/js/common/pay.js"></script></head>
+<body>
+<div>
+<!-- 조회/인쇄 팝업 -->
+<form id="fileForm" name="fileForm">
+<input id="FILE_ID" name="FILE_ID" type="hidden"/>
+<input id="FILE_EXT" name="FILE_EXT" type="hidden"/>
+</form>
+<form name="FORM_SECTION">
+<div class="inquiry_wrap">
+<h3>환경정보 등록 항목별 작성정보</h3>
+<div class="layer_cont">
+<div class="colleft">
+<div class="chk_wrap">
+<span class="right">
+<a class="btn_mtype1" href="javascript:print();">인쇄</a>
+</span>
+</div>
+<table class="tbl_inquiry">
+<caption>환경정보 등록 항목별 작성정보</caption>
+<colgroup>
+<col style="width:25%"/>
+<col/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row"></th>
+<td style="padding:10px;">
+<input checked="" id="checkAll_Y" title="의무" type="checkbox"/><em></em>
+<label for="checkAll_Y">의무</label>
+<input checked="" id="checkAll_N" title="자율" type="checkbox"/><em></em>
+<label for="checkAll_N">자율</label>
+</td>
+</tr>
+<!-- 이전그룹id초기화 -->
+<!-- 다음그룹id초기화 -->
+<!-- 섹션목록 loop시작 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<tr>
+<th scope="row">기업개요</th>
+<td>
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="01" title="선택" type="checkbox" value="01"/><em></em>
+</span>
+<a class="link" href="#inquiry01">
+											의무
+											
+											1. 사업현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="02" title="선택" type="checkbox" value="02"/><em></em>
+</span>
+<a class="link" href="#inquiry02">
+											
+											자율
+											2. 환경.안전 관련 수상 및 협약 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+</td>
+</tr>
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<tr>
+<th scope="row">전략 및 녹색경영 시스템</th>
+<td>
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="03" title="선택" type="checkbox" value="03"/><em></em>
+</span>
+<a class="link" href="#inquiry03">
+											
+											자율
+											3. 녹색경영.비전.전략.방침.목표
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="04" title="선택" type="checkbox" value="04"/><em></em>
+</span>
+<a class="link" href="#inquiry04">
+											의무
+											
+											4. 전담조직.교육훈련.내부심사 등
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+<img src="/renew/img/common/ico/ico_clip.png" style="width: 15px;"/>
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+</td>
+</tr>
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<tr>
+<th scope="row">자원/에너지</th>
+<td>
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="05" title="선택" type="checkbox" value="05"/><em></em>
+</span>
+<a class="link" href="#inquiry05">
+											의무
+											
+											5. 저감투자 및 기술도입
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="06" title="선택" type="checkbox" value="06"/><em></em>
+</span>
+<a class="link" href="#inquiry06">
+											의무
+											
+											6. 원부자재 사용량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="07" title="선택" type="checkbox" value="07"/><em></em>
+</span>
+<a class="link" href="#inquiry07">
+											의무
+											
+											7. 용수 사용량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="08" title="선택" type="checkbox" value="08"/><em></em>
+</span>
+<a class="link" href="#inquiry08">
+											의무
+											
+											8. 에너지 사용량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="09" title="선택" type="checkbox" value="09"/><em></em>
+</span>
+<a class="link" href="#inquiry09">
+											
+											자율
+											9. 신재생에너지 투자 및 기술도입
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+</td>
+</tr>
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<tr>
+<th scope="row">온실가스/환경오염</th>
+<td>
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="10" title="선택" type="checkbox" value="10"/><em></em>
+</span>
+<a class="link on" href="#inquiry10">
+											
+											자율
+											10. 온실가스 저감투자 및 기술도입
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="11" title="선택" type="checkbox" value="11"/><em></em>
+</span>
+<a class="link" href="#inquiry11">
+											
+											자율
+											11. 온실가스 관리수준 및 배출량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="12" title="선택" type="checkbox" value="12"/><em></em>
+</span>
+<a class="link" href="#inquiry12">
+											의무
+											
+											12. 환경오염 저감투자 및 기술도입
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="13" title="선택" type="checkbox" value="13"/><em></em>
+</span>
+<a class="link" href="#inquiry13">
+											의무
+											
+											13. 환경오염물질 관리시설 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="14" title="선택" type="checkbox" value="14"/><em></em>
+</span>
+<a class="link" href="#inquiry14">
+											의무
+											
+											14. 대기오염물질 배출량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="15" title="선택" type="checkbox" value="15"/><em></em>
+</span>
+<a class="link" href="#inquiry15">
+											의무
+											
+											15. 수질오염물질 배출량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="16" title="선택" type="checkbox" value="16"/><em></em>
+</span>
+<a class="link" href="#inquiry16">
+											의무
+											
+											16. 폐기물 발생량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="17" title="선택" type="checkbox" value="17"/><em></em>
+</span>
+<a class="link" href="#inquiry17">
+											의무
+											
+											17. 화학물질 배출량
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="18" title="선택" type="checkbox" value="18"/><em></em>
+</span>
+<a class="link" href="#inquiry18">
+											
+											자율
+											18. 토양.소음진동.악취 관리
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+</td>
+</tr>
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<tr>
+<th scope="row">녹색제품/서비스</th>
+<td>
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="19" title="선택" type="checkbox" value="19"/><em></em>
+</span>
+<a class="link" href="#inquiry19">
+											
+											자율
+											19. 녹색제품.서비스개발 투자 및 기술도입
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="20" title="선택" type="checkbox" value="20"/><em></em>
+</span>
+<a class="link" href="#inquiry20">
+											
+											자율
+											20. 친환경설계(에코디자인) 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="21" title="선택" type="checkbox" value="21"/><em></em>
+</span>
+<a class="link" href="#inquiry21">
+											
+											자율
+											21. TypeI인증 및 TypeII인증 제품 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="22" title="선택" type="checkbox" value="22"/><em></em>
+</span>
+<a class="link" href="#inquiry22">
+											
+											자율
+											22. 녹색제품.구매 지침 운영 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="23" title="선택" type="checkbox" value="23"/><em></em>
+</span>
+<a class="link" href="#inquiry23">
+											
+											자율
+											23. 협력업체 환경정보관리 및 환경성 평가
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="24" title="선택" type="checkbox" value="24"/><em></em>
+</span>
+<a class="link" href="#inquiry24">
+											
+											자율
+											24. 환경기술 및 교육지원 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+</td>
+</tr>
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<tr>
+<th scope="row">사회/윤리적 책임</th>
+<td>
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="Y" name="list_select" sectionid="25" title="선택" type="checkbox" value="25"/><em></em>
+</span>
+<a class="link" href="#inquiry25">
+											의무
+											
+											25. 환경법규 위반 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="26" title="선택" type="checkbox" value="26"/><em></em>
+</span>
+<a class="link" href="#inquiry26">
+											
+											자율
+											26. 환경(지속가능)보고서 발간 현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 리스트의 첫번째 데이터가 아닌 경우 이전그룹id 저장 -->
+<!-- 리스트의 마지막 데이터가 아닌 경우 다음그룹id 저장 -->
+<!-- 이전그룹id와 현재그룹id가 다른경우 그룹 표시(기업개요, 전략및녹색경영시스템, 자원/에너지, 온실가스/환경오염, 녹색제품/서비스, 사회/윤리적책임...) -->
+<!-- 섹션별항목 표시 -->
+<li>
+<div class="check_wrap">
+<span>
+<input duty="N" name="list_select" sectionid="27" title="선택" type="checkbox" value="27"/><em></em>
+</span>
+<a class="link" href="#inquiry27">
+											
+											자율
+											27. 이해관계자 환경정보 요청 대응현황
+											<!-- 3 Step2_1_File Step2_2_File
+											4 Step2_4_File Step2_5_File Step2_6_File Step_2_7_File Step2_7_File
+											 -->
+</a>
+</div>
+</li>
+<!-- 현재그룹id와 다음그룹id가 다른경우 현재 그룹 종료 -->
+<!-- 섹션목록 loop종료 -->
+</td></tr></tbody>
+</table>
+</div>
+<div class="colright">
+<!-- 녹색기업여부 -->
+<div style="margin-bottom: 15px;float: right;right: 35px;">
+<div id="compSearchSelect" style="display: none;">
+<select name="year">
+</select>
+<select name="comp_id">
+<option comp_div="F01" selected="selected" value="00000000000000095468">도레이첨단소재(주)</option>
+</select>
+<a class="btn_mtype1" href="#" id="move">이동</a>
+</div>
+<a class="btn_mtype1" href="#" id="totalInfoPopBtn" onclick="totalInfoPop('2021','00000000000000095468','F01');" style="width: 125px;">주요환경 정보보기</a>
+</div>
+<!-- 의무 01. 사업현황 -->
+<div class="inquiry_cont" id="inquiry01" style="display: none;"><h3 style="margin-bottom:5px;">
+											의무
+											
+											1. 사업현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">
+						업종, 생산제품, 매출액, 종업원수
+						
+						
+					</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>
+						업종, 생산제품, 매출액, 종업원수
+						
+						
+					</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">사업장명</th>
+<td>도레이첨단소재(주)</td>
+<th scope="row">대표자</th>
+<td class="last">전해상, 임희석</td>
+</tr>
+<tr>
+<th scope="row">업종</th>
+<td class="last" colspan="3">제조업 &gt; 화학물질 및 화학제품 제조업;의약품 제외</td>
+</tr>
+<!-- 제조, 기타산업 -->
+<tr>
+<th scope="row">생산제품</th>
+<td class="last" colspan="3">
+<!-- <textarea style="width:566px; height:100%; border:0; overflow:hidden"></textarea> -->
+				                    	폴리에스터칩, 원사, 필름, 부직포 외
+				                    
+				                    
+			                    </td>
+</tr>
+<tr>
+<th scope="row">매출액</th>
+<td class="last" colspan="3">
+			                    	
+				                    	
+				                    		541,731 ( 단위 : 백만원 )
+				                    		
+						                    	
+						                    	
+							                    	
+							                    	
+							                    	
+							                    	
+							                    	
+							                    		<em class="txt_red">전년대비 3.9% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">
+			                    	국내종업원수
+			                    </th>
+<td class="last" colspan="3">
+		                    			 
+						                    	
+						                    		868 명
+						                    		
+								                    	
+								                    	
+									                    	
+									                    	
+									                    	
+									                    	
+									                    	
+									                    		<em class="txt_red">전년대비 6.2% (증가↑)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">
+						본사 / 사업장 현황
+						
+					</h4>
+</div>
+<table class="tbl_type mt10">
+<caption>
+						본사 / 사업장 현황
+						
+					</caption>
+<colgroup>
+<col style="width:15%"/>
+<col style="width:24%"/>
+<col style="width:43%"/>
+<col style="width:18%"/>
+</colgroup>
+<thead>
+<tr>
+<th scope="col">구분</th>
+<th scope="col">사업장명</th>
+<th scope="col">주소</th>
+<th class="last" scope="col">주요생산품</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>대표사업장</td>
+<td class="tleft">도레이첨단소재(주)</td>
+<td class="tleft">경북 구미시 임수동 93-1</td>
+<td class="last">폴리에스터칩, 원사, 필름, 부직포 외</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 01. 사업현황 -->
+<!-- 자율 02. 환경관련 수상 및 협약 사항 -->
+<div class="inquiry_cont" id="inquiry02" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											2. 환경.안전 관련 수상 및 협약 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">수상현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>수상현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">인증현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>인증현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">협약현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>협약현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 02. 환경관련 수상 및 협약 사항 -->
+<!-- 자율 03. 비전,전략,방침,목표 -->
+<div class="inquiry_cont" id="inquiry03" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											3. 녹색경영.비전.전략.방침.목표
+											
+											
+											
+											
+												 
+													 
+												 
+												 
+											
+												 
+													 
+												 
+												 
+											
+												 
+													 
+												 
+												 
+											
+												 
+													 
+												 
+												 
+											
+												 
+													 
+												 
+												 
+											
+												 
+													 
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">녹색경영 비전 및 전략</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색경영 비전 및 전략</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">내용</th>
+<td class="last">
+</td>
+</tr>
+<tr>
+<th scope="row">첨부파일</th>
+<td class="last">
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">녹색경영 목표 및 계획</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색경영 목표 및 계획</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">내용</th>
+<td class="last">
+</td>
+</tr>
+<tr>
+<th scope="row">첨부파일</th>
+<td class="last">
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //자율 03. 비전,전략,방침,목표 -->
+<!-- 의무 04. 전담조직,교육훈련,내부 심사 등 -->
+<div class="inquiry_cont" id="inquiry04" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											4. 전담조직.교육훈련.내부심사 등
+											
+											
+											
+											
+												 
+												 
+													 
+																
+													 
+												 
+											
+												 
+												 
+													 
+																
+													 
+												 
+											
+												 
+												 
+													 
+																
+													 
+												 
+											
+												 
+												 
+													 
+												 
+											
+												 
+												 
+													 
+																
+													 
+												 
+											
+												 
+												 
+													 
+												 
+											
+											
+												
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">녹색경영 전담조직 및 업무 · 역할 · 권한</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색경영 전담조직 및 업무 · 역할 · 권한</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">내용</th>
+<td class="last">
+		                    	
+		                    		조직도 첨부
+		                    	
+		                    	
+		                    </td>
+</tr>
+<tr>
+<th scope="row">첨부파일</th>
+<td class="last">
+<img src="/renew/img/common/ico/ico_file.gif"/>
+<a href="javascript:downloadFile('00000000000002382439','jpg');">2021 환경정보공개(전담조직도).jpg</a><br/><!-- 파일 확장자별 아이콘 추가로 class="attach_file" 제거 -->
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">녹색경영조직별 업무내용 (역할)</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색경영조직별 업무내용 (역할)</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">환경안전과(환경담당자)</td>
+</tr>
+<tr>
+<th class="" scope="row">업무내용</th>
+<td class="last">- 수질,대기 방지시설 관리
+<br/>- 수질,대기 자가측정 업무 주관 &amp; 자가측정 업체관리
+<br/>- 신/증설 공정 배출시설 인허가
+<br/>- 환경개선 경영 계획 수립
+<br/>- 관련법규 Monitoring
+<br/>- 사업장 폐기물 관리 및 처리
+<br/>- 폐기물 관리 기록 작성
+<br/>- 폐기물 처리실적 보고
+<br/>- 폐기물 위탁 처리업체 계약 및 업체 선정
+<br/>- 지정, 일반폐기물 신고( 변경신고 )
+<br/>- 신규화학물질의 등록
+<br/>- 장외영향평가서, 위해관리계획서 관리
+<br/>- 수입 실적, 배출량보고, 제조 등의 보고, 통계조사 등
+<br/>- 취급시설 설치검사, 정기검사 대응
+<br/>- 유해화학물질 시설관리
+<br/>- 유해화학물질 관련 교육 주관
+<br/>- 토양오염도 관리
+<br/>- 토양오염 유발시설 관리</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">환경안전과(안전&amp;보건담당자)</td>
+</tr>
+<tr>
+<th class="" scope="row">업무내용</th>
+<td class="last">- 안전관리 및 교육 &amp; 행사 주관
+<br/>- Process Safety Management 업무 주관
+<br/>- 산재보험 업무 주관
+<br/>- 유해위험기구 관리
+<br/>- 안전보호구 관리 및 지급
+<br/>- 방호설비 감시 및 설치 검토
+<br/>- 내원환자 처방전 관리 &amp; 예방접종 실시
+<br/>- MSDS &amp; 비상구급함 관리,  - 작업환경 측정
+<br/>- 방사선관리 및 인허가,       
+<br/>- 근로자 건강 진단 및 사후관리</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">환경안전과(방재담당자)</td>
+</tr>
+<tr>
+<th class="" scope="row">업무내용</th>
+<td class="last">- 소방교육 &amp; 소방훈련 실시
+<br/>- 위험물 관리,    
+<br/>- 소방점검 및 설비관리
+<br/>- 화기작업 &amp; 방재반 관리 </td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">생산/지원부서 환경안전담당자</td>
+</tr>
+<tr>
+<th class="" scope="row">업무내용</th>
+<td class="last">환경안전과 업무의 실무진행 및 전개</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">환경안전팀장</td>
+</tr>
+<tr>
+<th class="" scope="row">업무내용</th>
+<td class="last">- 환경, 안전보건, 방재 업무 총괄 관리</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">녹색경영 관련 교육훈련</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색경영 관련 교육훈련</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">교육/훈련명</th>
+<td>신규신입사원교육</td>
+<th scope="row">교육주관</th>
+<td class="last">환경안전</td>
+</tr>
+<tr>
+<th scope="row">대상자</th>
+<td>신규사원</td>
+<th scope="row">일시</th>
+<td class="last">2021.04.22</td>
+</tr>
+<tr>
+<th scope="row">교육방법</th>
+<td class="last" colspan="3">집합교육</td>
+</tr>
+<tr>
+<th scope="row">주요내용</th>
+<td class="last" colspan="3">- 환경, 윤리경영, 안전 등 환경안전 최우선
+<br/>- 경영 방침
+<br/>- 작업 개시 전, 점검에 관한 사항
+<br/>- 사고 발생 시 긴급조치에 관한 사항
+<br/>- 산업보건 및 직업병 예방에 관한 사항
+<br/>- MSDS에 관한 사항
+<br/>- 안전체험교육</td>
+</tr>
+<tr>
+<th scope="row">교육/훈련명</th>
+<td>관리감독자교육</td>
+<th scope="row">교육주관</th>
+<td class="last">환경안전</td>
+</tr>
+<tr>
+<th scope="row">대상자</th>
+<td>관리감독자</td>
+<th scope="row">일시</th>
+<td class="last">2021.10.01</td>
+</tr>
+<tr>
+<th scope="row">교육방법</th>
+<td class="last" colspan="3">외부집합교육</td>
+</tr>
+<tr>
+<th scope="row">주요내용</th>
+<td class="last" colspan="3">- 관리감독자의 역할과 임무에 관한 사항
+<br/>- 작업공정 유해/위험과 재해예방대책 사항
+<br/>- 표준안전작업방법 및 지도요령</td>
+</tr>
+<tr>
+<th scope="row">교육/훈련명</th>
+<td>환경기술인교육</td>
+<th scope="row">교육주관</th>
+<td class="last">환경보전협회</td>
+</tr>
+<tr>
+<th scope="row">대상자</th>
+<td>환경기술인</td>
+<th scope="row">일시</th>
+<td class="last">2021.12.07</td>
+</tr>
+<tr>
+<th scope="row">교육방법</th>
+<td class="last" colspan="3">집합교육</td>
+</tr>
+<tr>
+<th scope="row">주요내용</th>
+<td class="last" colspan="3">- 환경규제 동향 &amp; 환경법규 중요 / 개정사항
+<br/>- 환경처리시설 운영방법
+<br/>- 오염물질 처리 &amp; 관리 기술</td>
+</tr>
+</tbody>
+</table>
+<table class="tbl_writer type_view type2">
+<caption>첨부파일</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">첨부파일</th>
+<td class="last">
+<img src="/renew/img/common/ico/ico_file.gif"/>
+<a href="javascript:downloadFile('00000000000002382452','jpg');">2021 환경정보공개(교육실적).jpg</a><br/><!-- 파일 확장자별 아이콘 추가로 class="attach_file" 제거 -->
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">녹색경영 관련 내부심사</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색경영 관련 내부심사</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th class="" scope="row">심사주관</th>
+<td class="last" colspan="3">환경안전팀 및 경영혁신팀</td>
+</tr>
+<tr>
+<th class="" scope="row">대상자</th>
+<td class="">전 부서</td>
+<th class="" scope="row">일시</th>
+<td class="last">2021.10.25</td>
+</tr>
+<tr>
+<th class="" scope="row">주요내용</th>
+<td class="last" colspan="3">○ 환경(14001) 경영시스템 실행상태 확인
+<br/>○ ISO/요건의  적합성 및 준수성 확인(ISO인증유지를 위한 필수 실행사항)
+<br/>○ 경영시스템 및 프로세스의 효과적, 효율적 운영여부 파악</td>
+</tr>
+<tr>
+<th class="" scope="row">조치사항</th>
+<td class="last" colspan="3">1. '21년 리스크 및 기회평가실적 없음
+<br/>  → 담당자 선정 및 전파교육, 주기적 F/UP실시 
+<br/>2. 조직의 지식 정의 및 연간교육계획 수립 미흡
+<br/>  → 조직의 지식 정의 및 교육계획 및 평가 진행 
+<br/>3. 표준에 대한 F/UP미흡(폐기, 개정, 유효성평가)
+<br/>  → 담당자 지정 및 지속적 관리
+<br/></td>
+</tr>
+</tbody>
+</table>
+<table class="tbl_writer type_view type2">
+<caption>첨부파일</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th class="" scope="row">첨부파일</th>
+<td class="last">
+<img src="/renew/img/common/ico/ico_file.gif"/>
+<a href="javascript:downloadFile('00000000000002384049','JPG');">2021 내부심사.JPG</a><br/><!-- 파일 확장자별 아이콘 추가로 class="attach_file" 제거 -->
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">환경안전사고 대응체계</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경안전사고 대응체계</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">내용</th>
+<td class="last">
+		                    	
+			                    	대응조직도 및 업무내용 파일첨부하였음
+			                    
+		                    	
+		                    </td>
+</tr>
+<tr>
+<th scope="row">첨부파일</th>
+<td class="last">
+<div style="display: none;"> Step2_4_File</div>
+<div style="display: none;"> Step2_5_File</div>
+<div style="display: none;"> Step2_6_File</div>
+<div style="display: none;"> Step27_File</div>
+<img src="/renew/img/common/ico/ico_file.gif"/>
+<a href="javascript:downloadFile('00000000000002382460','jpg');">2021 환경정보공개(환경사고대응조직도).jpg</a><br/><!-- 파일 확장자별 아이콘 추가로 class="attach_file" 제거 -->
+<div style="display: none;"> Step2_7_File</div>
+<div style="display: none;"> Step8_1_File</div>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">환경안전사고대응 조직별 업무내용</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경안전사고대응 조직별 업무내용</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">지휘&amp;지원본부</td>
+</tr>
+<tr>
+<th scope="row">업무내용</th>
+<td class="last">ㆍ 지휘분대설치
+<br/>ㆍ 조치계획수립 및 지휘
+<br/>ㆍ 인원확보 및 지휘 통제</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">지원팀(연락경계반)</td>
+</tr>
+<tr>
+<th scope="row">업무내용</th>
+<td class="last">ㆍ 비상경보 발령 및 상황전파
+<br/>ㆍ 소방대 연락 및 요원 비상소집
+<br/>ㆍ 환경안전팀/당직실 연락
+<br/>ㆍ 기타 관련부서 연락</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">지원팀(구호반출반)</td>
+</tr>
+<tr>
+<th scope="row">업무내용</th>
+<td class="last">ㆍ 인원 대피,인원파악,지원
+<br/>ㆍ 응급조치 및 부상자 후송, 의무실 연락
+<br/>ㆍ 중요자료 반출,보완</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">방재팀</td>
+</tr>
+<tr>
+<th scope="row">업무내용</th>
+<td class="last">ㆍ 초기 진압 및 방어
+<br/>ㆍ 소방대 출동 지원시까지 조치를 취함</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">통제팀</td>
+</tr>
+<tr>
+<th scope="row">업무내용</th>
+<td class="last">ㆍ GAS 차단 &amp; Chemical 공급 차단
+<br/>ㆍ 이상발생조치</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+<tr>
+<th scope="row">부서명</th>
+<td class="last">복구팀</td>
+</tr>
+<tr>
+<th scope="row">업무내용</th>
+<td class="last">ㆍ 이상발생조치
+<br/>ㆍ 환경관련조치( 중화활동 등 )</td>
+</tr>
+<tr>
+<th scope="row">비고</th>
+<td class="last"></td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">환경안전사고 대응 모의 훈련</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경안전사고 대응 모의 훈련</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th class="" scope="row">훈련명</th>
+<td class="">화재폭발 화학물질  누출가정 비상대응훈련</td>
+<th class="" scope="row">훈련대상자</th>
+<td class="last">근무자</td>
+</tr>
+<tr>
+<th scope="row">일시</th>
+<td>2021.04.22</td>
+<th scope="row">훈련목적</th>
+<td class="last">사고발생시 원활한 초동대처</td>
+</tr>
+<tr>
+<th scope="row">훈련내용</th>
+<td class="last" colspan="3">상활발생, 전달
+<br/>초기진화
+<br/>비상연락 및 상황전파
+<br/>지원조 활동
+<br/>대피
+<br/>인원파악
+<br/>강평 및 교육</td>
+</tr>
+</tbody>
+</table>
+<table class="tbl_writer type_view type2">
+<caption>첨부파일</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">첨부파일</th>
+<td class="last">
+<img src="/renew/img/common/ico/ico_file.gif"/>
+<a href="javascript:downloadFile('00000000000002387812','jpg');">2021 환경정보공개(환경사고대응훈련).jpg</a><br/><!-- 파일 확장자별 아이콘 추가로 class="attach_file" 제거 -->
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 04. 전담조직,교육훈련,내부 심사 등 -->
+<!-- 의무 05. 저감투자 및 기술도입 -->
+<div class="inquiry_cont" id="inquiry05" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											5. 저감투자 및 기술도입
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">원부자재 절감 투자 및 기술도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>원부자재 절감 투자 및 기술도입 현황</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:26%"/>
+<col style="width:20%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">용수절감 투자 및 기술 도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>용수절감 투자 및 기술 도입 현황</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:26%"/>
+<col style="width:20%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">에너지 절감 투자 및 기술 도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>에너지 절감 투자 및 기술 도입 현황</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:26%"/>
+<col style="width:20%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">투자/기술분야</th>
+<td>전력</td>
+<th scope="row">총사업기간</th>
+<td class="last">2021.11.11</td>
+</tr>
+<tr>
+<th scope="row">총투자비</th>
+<td class="last" colspan="3">0 백만원</td>
+</tr>
+<tr>
+<th scope="row">내용</th>
+<td class="last" colspan="3">1. 공정개선 Ejector에서 발생되는 응축 EG를 제거함으로 공정 안정화</td>
+</tr>
+<tr>
+<th scope="row">효과(절감량)</th>
+<td class="last" colspan="3">1. 산출 근거 (단가, 절감 원단위)
+<br/> -전력 단가 : 95.96원/kWh  /  LNG단가 : 537.29원/N㎥ 
+<br/> -전력 원단위 개선(kW/Ton): 207.9(개선前)-190.8 (개선後, 안전율 80%적용)=17.1
+<br/> -LNG 원단위 개선(N㎥/Ton): 78.1(개선前)-73.1(개선後, 안전율 80%적용)= 5.0
+<br/>
+<br/>2. 21년=(전년 전력,LNG-금년 전력,LNG)*생산 load*생산일*전력,LNG단가
+<br/> -전력=(207.9-190.8)kW/Ton*220ton/일*151일*95.96kWh/원 = 54,511,229원/년
+<br/> -LNG=(78.1-73.1)N㎥/Ton*220ton/일*151일*537.29N㎥/원 = 89,243,869원/년
+<br/>  합계 : 143,842,333원/년</td>
+</tr>
+<tr>
+<th scope="row">투자/기술분야</th>
+<td>LNG</td>
+<th scope="row">총사업기간</th>
+<td class="last">2021.12.01</td>
+</tr>
+<tr>
+<th scope="row">총투자비</th>
+<td class="last" colspan="3">380 백만원</td>
+</tr>
+<tr>
+<th scope="row">내용</th>
+<td class="last" colspan="3">Steam Boiler 이코노마이저 도입
+<br/> - 보일러 배기가스 열회수로 보일러 급수온도 승온
+<br/> - 보일러 급수온도 승온을 통한 연료사용량 절감 도모
+<br/> - 보일러 배기가스 열회수를 위해 절탄기(Economizer) 설치 : A, B, C 보일러 각 1대 (총 3대) 설치 필요
+<br/> - 예상 효과 : 급수온도 약 14℃ 승온, 연료사용량 약 70m3/hr (35m3/hr x 2대) 절감
+<br/></td>
+</tr>
+<tr>
+<th scope="row">효과(절감량)</th>
+<td class="last" colspan="3">1. 개선내용 : #A,B스팀보일러 이코노마이저 설치로 LNG량 절감
+<br/>2. 개선근거
+<br/>   ***** 참고사항 : LNG저위발열량(9,290 kcal/N㎥)  ,  스팀단가 (34,155원/ton)  , LNG단가 (537.29원/N㎥) , 스팀톤당LNG (63.57N㎥/ton)
+<br/>
+<br/>   가. 스팀보일러 이코노마이저 설치로 LNG량 절감 : 226백만원/년  
+<br/>      ▶#A 스팀보일러 LNG 절감량 = 24.55N㎥/h x 24h x 365日 x LNG단가 (537.29 N㎥/원)
+<br/>      = 115,530,000원 / 年
+<br/>
+<br/>      ▶#B 스팀보일러 LNG 절감량 = 23.56N㎥/h x 24h x 365日  x LNG단가 (537.29 N㎥/원)
+<br/>      = 110,909,000원 / 年</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 05. 저감투자 및 기술도입 -->
+<!-- 의무 06. 원부자재 사용량 -->
+<div class="inquiry_cont" id="inquiry06" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											6. 원부자재 사용량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">원부자재(누적질량 70% 이상) 사용 실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>원부자재(누적질량 70% 이상) 사용 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:30%"/>
+<col style="width:20%"/>
+<col style="width:30%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">주사용 원료</th>
+<td>
+		                    
+		                    	
+		                    		TPA
+									
+		                    	 	
+		                    </td>
+<th scope="row">주사용 원료 외</th>
+<td>
+		                    	
+			                    	205 종
+									
+		                    		
+		                    </td>
+</tr>
+<tr>
+<th scope="row">원부자재 사용량<br/></th>
+<td class="last" colspan="3">
+		                    	
+		                    		591,522.4783 ton
+		                    	
+		                    	
+		                    	
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 12.9% (증가↑)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">당해년도 계획 (녹색기업만 작성)</h4>
+</div>
+<p class="guide_txt">※ 녹색기업이란? <br/> 환기환산법 제16조의2제1항에 따라 오염물질의 현저한 감소, 자원과 에너지의 절감, 제품의 환경성 개선, 녹색경영체제의 구축 등을 통하여 환경개선에 크게 이바지하는 제조 및 비제조(공공 사회서비스 등 포함) 기업 또는 기관 및 개별 사업장, 지점․지사, 본부 등 을 뜻하며, 신청서 및 녹색경영보고서를 작성·제출하여 일정 기준 이상의 평가를 받은 경우 지정받을 수 있음. 당해년도 계획은 녹색기업으로 지정된 기업·기관만 작성함을 원칙으로 함</p>
+<table class="tbl_writer type_view">
+<caption>당해년도 계획 (녹색기업만 작성)</caption>
+<colgroup>
+<col style="width:6%"/>
+<col style="width:14%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">주사용 원료</th>
+<td class="last">
+		                    	
+			                    	TPA, EG 외
+		                    	
+		                    	
+		                    </td>
+</tr>
+<tr>
+<th scope="row">사용량</th>
+<td class="last">
+				                
+			                    	591,522
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+				                    		
+				                    		
+				                    		
+				                    			<em class="txt_red">계획대비 0% (증가↑)</em>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 06. 원부자재 사용량 -->
+<!-- 의무 07. 용수사용량 -->
+<div class="inquiry_cont" id="inquiry07" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											7. 용수 사용량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">용수 사용·재활용량 실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>용수 사용·재활용량 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">용수 사용량</th>
+<td class="last">
+				                
+			                    	1,138,192 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 6.1% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">용수 재활용량</th>
+<td class="last">
+				                
+			                    	0 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	<em class="txt_red">전년도 입력 정보 없음</em>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">당해년도 계획 (녹색기업만 작성)</h4>
+</div>
+<p class="guide_txt">※ 녹색기업이란? <br/> 환기환산법 제16조의2제1항에 따라 오염물질의 현저한 감소, 자원과 에너지의 절감, 제품의 환경성 개선, 녹색경영체제의 구축 등을 통하여 환경개선에 크게 이바지하는 제조 및 비제조(공공 사회서비스 등 포함) 기업 또는 기관 및 개별 사업장, 지점․지사, 본부 등 을 뜻하며, 신청서 및 녹색경영보고서를 작성·제출하여 일정 기준 이상의 평가를 받은 경우 지정받을 수 있음. 당해년도 계획은 녹색기업으로 지정된 기업·기관만 작성함을 원칙으로 함</p>
+<table class="tbl_writer type_view">
+<caption>당해년도 계획 (녹색기업만 작성)</caption>
+<colgroup>
+<col style="width:6%"/>
+<col style="width:14%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">용수 사용량</th>
+<td class="last">
+				                
+			                    	1,118,756 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+				                    		
+				                    		
+				                    			<em class="txt_red">계획대비 1.7% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">용수 재활용량</th>
+<td class="last">
+		                    	
+			                    	0 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+				                    		<em class="txt_red">전년도 입력 정보 없음</em>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 07. 용수사용량 -->
+<!-- 의무 08. 에너지 사용량 -->
+<div class="inquiry_cont" id="inquiry08" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											8. 에너지 사용량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">에너지원별 사용 실적</h4>
+</div>
+<p class="guide_txt">※ 에너지 사용량 실적(특히, 가스 종)에는 『TOE 환산을 위한 단위』가 사용되어 내부적으로 관리하는 단위와 다를 수 있습니다. 단위가 다른 경우 계산기를 활용하십시오.</p>
+<table class="tbl_writer type_view">
+<caption>에너지원별 사용 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">에너지 총 사용량</th>
+<td class="last">
+<div class="hideToeToTjSE08001050" style="display: none;">
+<input class="itemId" type="hidden" value="SE08001050"/>
+<input class="year" type="hidden" value="2021"/>
+<input class="value" type="hidden" value="4424.999999528698"/>
+<input class="postValue" type="hidden" value="102339.914716737811"/>
+<span class="formEmpty"><em class="txt_red">전년도 입력 정보 없음</em></span>
+<span class="formEquals"><em>전년과 동일</em></span>
+<span class="formSmall"><em class="txt_blue">전년대비 <span class="per"></span>% (감소↓)</em></span>
+<span class="formLarge"><em class="txt_red">전년대비 <span class="per">3.291</span>% (증가↑)</em></span>
+</div>4,424.999 TJ <em class="txt_red">전년대비 <span class="per">3.291</span>% (증가↑)</em>
+<!--
+			                    	4,425 TOE
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 95.7% (감소↓)</em>
+					                    	
+					                    	
+					                    	
+					                    	
+					                    
+					                
+					                -->
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">당해년도 계획 (녹색기업만 작성)</h4>
+</div>
+<p class="guide_txt">※ 녹색기업이란? <br/> 환기환산법 제16조의2제1항에 따라 오염물질의 현저한 감소, 자원과 에너지의 절감, 제품의 환경성 개선, 녹색경영체제의 구축 등을 통하여 환경개선에 크게 이바지하는 제조 및 비제조(공공 사회서비스 등 포함) 기업 또는 기관 및 개별 사업장, 지점․지사, 본부 등 을 뜻하며, 신청서 및 녹색경영보고서를 작성·제출하여 일정 기준 이상의 평가를 받은 경우 지정받을 수 있음. 당해년도 계획은 녹색기업으로 지정된 기업·기관만 작성함을 원칙으로 함</p>
+<table class="tbl_writer type_view">
+<caption>당해년도 계획 (녹색기업만 작성)</caption>
+<colgroup>
+<col style="width:6%"/>
+<col style="width:14%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">에너지 총량</th>
+<td class="last">
+<div class="hideToeToTjSE08090001" style="display: none;">
+<input class="itemId" type="hidden" value="SE08090001"/>
+<input class="year" type="hidden" value="2021"/>
+<input class="value" type="hidden" value="4424.999999528698"/>
+<input class="postValue" type="hidden" value="4360.8175875"/>
+<span class="formEmpty"><em class="txt_red">계획 정보 없음</em></span>
+<span class="formEquals"><em>계획과 동일</em></span>
+<span class="formSmall"><em class="txt_blue">계획대비 <span class="per"></span>% (감소↓)</em></span>
+<span class="formLarge"><em class="txt_red">계획대비 <span class="per">1.471</span>% (증가↑)</em></span>
+</div>4,360.817 TJ <em class="txt_red">계획대비 <span class="per">1.471</span>% (증가↑)</em>
+<!--
+			                    	4,360.81759 TOE
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+				                    		
+				                    		
+				                    			<em class="txt_red">계획대비 1.5% (증가↑)</em>
+				                    		
+				                    		
+					                    
+					                
+					                -->
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 08. 에너지 사용량/원단위 -->
+<!-- 의무 09. 신재생 에너지 투자 및 기술도입 -->
+<div class="inquiry_cont" id="inquiry09" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											9. 신재생에너지 투자 및 기술도입
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">투자 및 기술 도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>투자 및 기술 도입 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //의무 09. 신재생 에너지 투자 및 기술도입 -->
+<!-- 자율 10. 온실가스 저감투자 및 기술도입 -->
+<div class="inquiry_cont" id="inquiry10" style="display: block; opacity: 0.069629;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											10. 온실가스 저감투자 및 기술도입
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">온실가스 투자 및 기술 도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>온실가스 투자 및 기술 도입 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">분야(설비명)</th>
+<td class="last" colspan="3">전력</td>
+</tr>
+<tr>
+<th scope="row">총사업기간</th>
+<td>2021.11.11</td>
+<th scope="row">총투자비</th>
+<td class="last">0 백만원</td>
+</tr>
+<tr>
+<th scope="row">사업내용</th>
+<td class="last" colspan="3">1. 공정개선 Ejector에서 발생되는 응축 EG를 제거함으로 공정 안정화</td>
+</tr>
+<tr>
+<th scope="row">효과(절감량)</th>
+<td class="last" colspan="3">1. 산출 근거 (단가, 절감 원단위)
+<br/> -전력 단가 : 95.96원/kWh  /  LNG단가 : 537.29원/N㎥ 
+<br/> -전력 원단위 개선(kW/Ton): 207.9(개선前)-190.8 (개선後, 안전율 80%적용)=17.1
+<br/> -LNG 원단위 개선(N㎥/Ton): 78.1(개선前)-73.1(개선後, 안전율 80%적용)= 5.0
+<br/>
+<br/>2. 21년=(전년 전력,LNG-금년 전력,LNG)*생산 load*생산일*전력,LNG단가
+<br/> -전력=(207.9-190.8)kW/Ton*220ton/일*151일*95.96kWh/원 = 54,511,229원/년
+<br/> -LNG=(78.1-73.1)N㎥/Ton*220ton/일*151일*537.29N㎥/원 = 89,243,869원/년
+<br/>  합계 : 143,842,333원/년</td>
+</tr>
+<tr>
+<th scope="row">분야(설비명)</th>
+<td class="last" colspan="3">LNG</td>
+</tr>
+<tr>
+<th scope="row">총사업기간</th>
+<td>2021.12.01</td>
+<th scope="row">총투자비</th>
+<td class="last">380 백만원</td>
+</tr>
+<tr>
+<th scope="row">사업내용</th>
+<td class="last" colspan="3">Steam Boiler 이코노마이저 도입
+<br/> - 보일러 배기가스 열회수로 보일러 급수온도 승온
+<br/> - 보일러 급수온도 승온을 통한 연료사용량 절감 도모
+<br/> - 보일러 배기가스 열회수를 위해 절탄기(Economizer) 설치 : A, B, C 보일러 각 1대 (총 3대) 설치 필요
+<br/> - 예상 효과 : 급수온도 약 14℃ 승온, 연료사용량 약 70m3/hr (35m3/hr x 2대) 절감
+<br/></td>
+</tr>
+<tr>
+<th scope="row">효과(절감량)</th>
+<td class="last" colspan="3">1. 개선내용 : #A,B스팀보일러 이코노마이저 설치로 LNG량 절감
+<br/>2. 개선근거
+<br/>   ***** 참고사항 : LNG저위발열량(9,290 kcal/N㎥)  ,  스팀단가 (34,155원/ton)  , LNG단가 (537.29원/N㎥) , 스팀톤당LNG (63.57N㎥/ton)
+<br/>
+<br/>   가. 스팀보일러 이코노마이저 설치로 LNG량 절감 : 226백만원/년  
+<br/>      ▶#A 스팀보일러 LNG 절감량 = 24.55N㎥/h x 24h x 365日 x LNG단가 (537.29 N㎥/원)
+<br/>      = 115,530,000원 / 年
+<br/>
+<br/>      ▶#B 스팀보일러 LNG 절감량 = 23.56N㎥/h x 24h x 365日  x LNG단가 (537.29 N㎥/원)
+<br/>      = 110,909,000원 / 年</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //자율 10. 온실가스 저감투자 및 기술도입 -->
+<!-- 자율 11. 온실가스 관리수준 및 배출량 -->
+<div class="inquiry_cont" id="inquiry11" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											11. 온실가스 관리수준 및 배출량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">온실가스 인벤토리 구축현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>온실가스 인벤토리 구축현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">온실가스 명세서</th>
+<td class="last">
+								비공개
+		                    </td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">목표-계획-실적 관리 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>목표-계획-실적 관리 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">온실가스배출 실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>온실가스배출 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:35%"/>
+<col style="width:45%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">직접배출량(scopeⅠ)</th>
+<td>
+		                    	
+			                    	0 ton CO<sub>2</sub> eq<br/>
+<em class="txt_blue">전년대비 100% (감소↓)</em>
+</td>
+<td class="td01 last">
+		                    	기업 경계 내에서 에너지 연소 및 산업공정 등에서 발생하는 온실가스 (고정연소,이동연소,공정 및 탈루 등)
+		                    </td>
+</tr>
+<tr>
+<th scope="row">간접배출량(scopeⅡ)</th>
+<td>
+		                    	
+			                    	0 ton CO<sub>2</sub> eq<br/>
+<em class="txt_blue">전년대비 100% (감소↓)</em>
+</td>
+<td class="td01 last">
+		                    	외부로 부터 구입하는 전기,스팀 등으로 인해 간접적으로 배출되는 온실가스
+		                    </td>
+</tr>
+<tr>
+<th scope="row">간접배출량(scopeⅢ)</th>
+<td>
+		                    	
+			                    	0 ton CO<sub>2</sub> eq<br/>
+<em class="txt_red">전년도 입력 정보 없음</em>
+</td>
+<td class="td01 last">
+		                    	제품의 사용 및 폐기, 구입원료의 생산 등 기타 간접부문에서 배출되는 온실가스 (제품의 사용, 제품 폐기단계의 운송, 구입원료 생산, 직원 출장 및 외부이동 등)
+		                    </td>
+</tr>
+<tr>
+<th scope="row">온실가스배출총량</th>
+<td class="last" colspan="2">
+		                    	
+			                    	0 ton CO<sub>2</sub> eq
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 100% (감소↓)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="guide_txt">※ ton CO<sub>2</sub> eq 란?<br/>지구온난화에 기여하는 정도를 상대적 수치로 표현한 『지구온난화지수(GWP, Global Warming Potential)의 단위』로써 다양한 온실가스들의 배출량을 CO<sub>2</sub> 배출량 기준으로 환산한 값 (ex. 이산화탄소(CO<sub>2</sub>) 1ton 배출 = 1 ton CO<sub>2</sub> eq 배출 / 메탄(CH4) 1ton 배출 = 21 ton CO<sub>2</sub> eq 배출)</p>
+<div class="tit_wrap mt10">
+<h4 class="type3">당해년도 계획 (녹색기업만 작성)</h4>
+</div>
+<p class="guide_txt">※ 녹색기업이란?<br/>환기환산법 제16조의2제1항에 따라 오염물질의 현저한 감소, 자원과 에너지의 절감, 제품의 환경성 개선, 녹색경영체제의 구축 등을 통하여 환경개선에 크게 이바지하는 제조 및 비제조(공공 사회서비스 등 포함) 기업 또는 기관 및 개별 사업장, 지점․지사, 본부 등 을 뜻하며, 신청서 및 녹색경영보고서를 작성·제출하여 일정 기준 이상의 평가를 받은 경우 지정받을 수 있음. 당해년도 계획은 녹색기업으로 지정된 기업·기관만 작성함을 원칙으로 함</p>
+<table class="tbl_writer type_view">
+<caption>당해년도 계획 (녹색기업만 작성)</caption>
+<colgroup>
+<col style="width:6%"/>
+<col style="width:14%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">온실가스 배출총량</th>
+<td class="last">
+		                    	
+			                    	0 ton CO<sub>2</sub> eq
+			                    	
+				                    	
+				                    		<em class="txt_red">계획 정보 없음</em>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- 자율 11. 온실가스 관리수준 및 배출량 -->
+<!-- 의무 12. 환경오염 저감투자 및 기술도입 -->
+<div class="inquiry_cont" id="inquiry12" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											12. 환경오염 저감투자 및 기술도입
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">대기·수질, 폐기물 및 화학물질 관련 투자 및 기술 도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>대기·수질, 폐기물 및 화학물질 관련 투자 및 기술 도입 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">설비명</th>
+<td class="last" colspan="3">열매, Steam Boiler</td>
+</tr>
+<tr>
+<th scope="row">총사업기간</th>
+<td>2021.02.02 - 2021.09.30</td>
+<th scope="row">총투자비</th>
+<td class="last">415 백만원</td>
+</tr>
+<tr>
+<th scope="row">사업내용</th>
+<td class="last" colspan="3">열매, Steam Boiler TMS도입</td>
+</tr>
+<tr>
+<th scope="row">효과(절감량)</th>
+<td class="last" colspan="3">실시간 Monitoring을 통한 공정안정화</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 12. 환경오염 저감투자 및 기술도입 -->
+<!-- 의무 13. 환경오염관리시설 및 모니터링 시스템 현황 -->
+<div class="inquiry_cont" id="inquiry13" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											13. 환경오염물질 관리시설 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">대기오염물질 관리시설 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>대기오염물질 관리시설 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">여과집진시설</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Bag-Filter</td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">20CMM*3</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">연소조절에의한시설</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">SteamBoiler</td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">670CMM*3EA</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">흡수에의한시설</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Scrubbeer</td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">800CMM
+<br/></td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">여과집진시설</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Oil Filter</td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">100CMM</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">흡수에의한시설</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Scrubber
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">330CMM</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">직접연소에의한시설
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Exess Burner
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">130CMM</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">흡수에의한시설
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Scrubber
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">80CMM</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">여과집진시설
+<br/>
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Bag-Filter</td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">70CMM</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">흡수에의한시설
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">Scrubber
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">130CMM</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">연소조절에의한시설
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">저NoxBurner
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">75CMM*2EA, 65CMM, 170CMM*3EA, 210CMM*2EA, 360CMM*2EA</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">수질오염물질 관리시설 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>수질오염물질 관리시설 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">혐기성소화시설</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">EGSB
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">1324㎥</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">MBR
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">폭기조
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">800㎥</td>
+</tr>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">고도산화설비
+<br/>
+<br/></td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">H.C.R
+<br/></td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">1200㎥/일</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">화학물질 관리시설 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>화학물질 관리시설 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">시설명</th>
+<td class="last">유해화학물질 사용시설 1개소, 저장시설 9개소</td>
+</tr>
+<tr>
+<th scope="row">종류</th>
+<td class="last">1. 제조,사용시설 : 1개소
+<br/>2. 옥외 저장시설 : 6개소
+<br/>3. 소량 저장시설 : 3개소</td>
+</tr>
+<tr>
+<th scope="row">용량</th>
+<td class="last">저장탱크 용량 합계 84.3 m3</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">대기오염물질 모니터링 시스템 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>대기오염물질 모니터링 시스템 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">모니터링 주기</th>
+<td class="last">1회/2주, 1회/6개월</td>
+</tr>
+<tr>
+<th scope="row">모니터링 방법</th>
+<td class="last">측정대행업체의 자가측정실시</td>
+</tr>
+</tbody></table>
+<div class="tit_wrap mt10">
+<h4 class="type3">수질오염물질 모니터링 시스템 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>수질오염물질 모니터링 시스템 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">모니터링 주기</th>
+<td class="last"> 1회/1주, 1회/6개월</td>
+</tr>
+<tr>
+<th scope="row">모니터링 방법</th>
+<td class="last">측정대행업체의 자가측정실시</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">화학물질 모니터링 시스템 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>화학물질 모니터링 시스템 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">모니터링 주기</th>
+<td class="last">상시</td>
+</tr>
+<tr>
+<th scope="row">모니터링 방법</th>
+<td class="last">1. 해당 공정 CCTV를 통한 상시 감시
+<br/>2. 탱크 방류벽 내 또는 사용시설 내 누액감지센서 설치 (DCS 알람 집중화)
+<br/>3. 근무자 주기적 현장 패트롤</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 13. 환경오염관리시설 및 모니터링 시스템 현황 -->
+<!-- 의무 14. 대기오염물질 배출량 -->
+<div class="inquiry_cont" id="inquiry14" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											14. 대기오염물질 배출량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">대기오염물질 배출 실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>대기오염물질 배출 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">질소산화물(Nox)</th>
+<td class="last">
+		                    	
+			                    	57.787 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 2.1% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">황산화물(SOX)</th>
+<td class="last">
+		                    	
+			                    	0 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	<em class="txt_red">전년도 입력 정보 없음</em>
+</td>
+</tr>
+<tr>
+<th scope="row">먼지(PM)</th>
+<td class="last">
+		                    	
+			                    	0.06546 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 207.3% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th class="th01" scope="row">대기오염물질<br/>총배출량</th>
+<td class="last">
+				                
+			                    	57.85246 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 2.2% (증가↑)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="guide_txt">※ 질소산화물(NOx)란?<br/>질소와 산소로 이루어진 화합물로서, 산성비 및 오존층 파괴에 영향을 미치며 호흡기 질환의 원인이 되기도 함</p>
+<p class="guide_txt">※ 황산화물(SOx)란?<br/>황과 산소로 이루어진 화합물로서, 산성비의 원인이 되거나 사람의 몸속에 점막에 작용해 호흡기 질환을 일으킴</p>
+<p class="guide_txt">※ 먼지(PM, Particulate Matter)란?<br/>대기중 장기간 떠다니는 입경 10㎛ 이하의 미세한 먼지로서 천식, 호흡곤란, 비 또는 눈 속의 중금속 농도 증가의 원인이 되며 식물성장에도 나쁜 영향을 미침</p>
+</div>
+<!-- //의무 14. 대기오염물질 배출량 -->
+<!-- 의무 15. 수질오염물질 배출량 -->
+<div class="inquiry_cont" id="inquiry15" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											15. 수질오염물질 배출량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">수질오염물질 배출 실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>수질오염물질 배출 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">생물화학적 산소<br/>요구량(BOD)</th>
+<td class="last">
+		                    	
+			                    	0.17962 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 113.9% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">화학적 산소<br/>요구량(COD)</th>
+<td class="last">
+		                     	
+			                    	7.63401 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 315.8% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">총유기탄소(TOC)</th>
+<td class="last">
+		                     	
+			                    	0 ton
+			                    	
+				                    	
+				                    		<em class="txt_red">전년도 입력 정보 없음</em>
+</td>
+</tr>
+<tr>
+<th scope="row">부유물질(SS)</th>
+<td class="last">
+		                    	
+			                    	0.7634 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 1% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">총질소(T-N)</th>
+<td class="last">
+		                    	
+			                    	5.52343 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 5.2% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">총인(T-P)</th>
+<td class="last">
+		                    	
+			                    	0.04491 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 48.9% (감소↓)</em>
+</td>
+</tr>
+<tr>
+<th class="th01" scope="row">수질오염물질<br/>총배출량</th>
+<td class="last">
+		                    	
+			                    	14.14537 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 76.5% (증가↑)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="guide_txt">※ 생물화학적 산소요구량(BOD, Biochemical Oxygen Demand)란?<br/>호기성 미생물이 일정 기간 동안 물 속에 있는 유기물을 분해할 때 사용하는 산소의 양을 의미하며, COD와 함께 물의 오염된 정도를 표시하는 지표로 사용됨</p>
+<p class="guide_txt">※ 화학적 산소요구량(COD, Chemical Oxygen Demand)란?<br/>유기물 등의 오염물질을 산화제로 산화 분해시켜 정화하는 데 소비되는 산소량을 의미하며, BOD와 함께 물의 오염된 정도를 표시하는 지표로 사용됨</p>
+<p class="guide_txt">※ 총유기탄소량(TOC, Total Organic Carbon)란?<br/>유기물질 측정지표 중 하나로 시료를 고온으로 태우는 등의 방법으로 발생하는 이산화탄소를 측정하여 탄소량으로 표현</p>
+<p class="guide_txt">※ 부유물질(SS, Suspended Solids)란?<br/>입자 지름이2mm 이하로 물에 용해되지 않는 물질을 일컫는 말로 오염된 물의 수질을 표시하는 지표</p>
+<p class="guide_txt">※ 총질소(T-N, Total Nitrogen)란?<br/>무기성 질소 및 유기성 질소의 총량을 말하며 하천, 호소 등의 부영양화를 나타내는 지표의 하나</p>
+<p class="guide_txt">※ 총인(T-P, Total Phosphorus)란?<br/>하천, 호소 등의 부영양화를 나타내는 지표의 하나로 물속에 포함된 인의 총량</p>
+</div>
+<!-- //의무 15. 수질오염물질 배출량 -->
+<!-- 의무 16. 폐기물발생량 -->
+<div class="inquiry_cont" id="inquiry16" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											16. 폐기물 발생량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">폐기물 배출·재활용 실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>폐기물 배출·재활용 실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">일반폐기물</th>
+<td class="last">
+		                    	
+			                    	8,561.623 ton
+			                    	
+				                    	
+				                    	
+				                    		
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 4.1% (감소↓)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">지정폐기물</th>
+<td class="last">
+		                    	
+			                    	819.9 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 8.9% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">건설폐기물</th>
+<td class="last">
+		                    	
+			                    	251.93 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 0.8% (감소↓)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">폐기물재활용량</th>
+<td class="last">
+		                    	
+			                    	9,181.56 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 5.2% (감소↓)</em>
+</td>
+</tr>
+<tr>
+<th class="th01" scope="row">폐기물발생 총량</th>
+<td class="last">
+		                    	
+			                    	9,633.453 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_blue">전년대비 3% (감소↓)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="guide_txt">※ 일반폐기물이란?<br/>지정폐기물과 건설폐기물을 제외한 폐기물만 해당 (재활용량 포함)</p>
+<p class="guide_txt">※ 지정폐기물이란?<br/>폐유·폐산 등 주변 환경을 오염시킬 수 있거나 의료폐기물 등 인체에 위해를 줄 수 있는 해로운 물질로서 대통령령으로 정하는 폐기물 (재활용량 포함)</p>
+<p class="guide_txt">※ 건설폐기물이란?<br/>건설공사로 인하여 건설현장에서 발생하는 5톤 이상의 폐기물로 공사를 시작할 때부터 완료할 때까지 발생하는 것만 건설폐기물에 해당 (재활용량 포함)<br/>건설현장에서 발생하는 5톤 미만의 건설폐기물은 '공사장 생활폐기물'로써 생활폐기물로 취급되며 해당 실적은 일반폐기물에 입력(재활용량 포함)</p>
+<div class="tit_wrap mt10">
+<h4 class="type3">당해년도 계획 (녹색기업만 작성)</h4>
+</div>
+<p class="guide_txt">※ 녹색기업이란?<br/>환기환산법 제16조의2제1항에 따라 오염물질의 현저한 감소, 자원과 에너지의 절감, 제품의 환경성 개선, 녹색경영체제의 구축 등을 통하여 환경개선에 크게 이바지하는 제조 및 비제조(공공 사회서비스 등 포함) 기업 또는 기관 및 개별 사업장, 지점․지사, 본부 등 을 뜻하며, 신청서 및 녹색경영보고서를 작성·제출하여 일정 기준 이상의 평가를 받은 경우 지정받을 수 있음. 당해년도 계획은 녹색기업으로 지정된 기업·기관만 작성함을 원칙으로 함</p>
+<table class="tbl_writer type_view">
+<caption>당해년도 계획 (녹색기업만 작성)</caption>
+<colgroup>
+<col style="width:6%"/>
+<col style="width:14%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">폐기물발생 총량</th>
+<td class="last">
+		                    	
+			                    	9,600 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+				                    		
+				                    		
+				                    			<em class="txt_red">계획대비 0.3% (증가↑)</em>
+</td>
+</tr>
+<tr>
+<th scope="row">폐기물 재활용량</th>
+<td class="last">
+		                    	
+			                    	9,400 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+				                    			<em class="txt_blue">계획대비 97.3% (감소↓)</em>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 16. 폐기물발생량 -->
+<!-- 의무 17. 화학물질 배출량 -->
+<div class="inquiry_cont" id="inquiry17" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											17. 화학물질 배출량
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">화학물질 배출실적</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>화학물질 배출실적</caption>
+<colgroup>
+<col style="width:20%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">화학물질 배출량</th>
+<td class="last">
+		                    	
+			                    	0.0077 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    	
+					                    		<em class="txt_red">전년대비 28.3% (증가↑)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">당해년도 계획 (녹색기업만 작성)</h4>
+</div>
+<p class="guide_txt">※ 녹색기업이란?<br/>환기환산법 제16조의2제1항에 따라 오염물질의 현저한 감소, 자원과 에너지의 절감, 제품의 환경성 개선, 녹색경영체제의 구축 등을 통하여 환경개선에 크게 이바지하는 제조 및 비제조(공공 사회서비스 등 포함) 기업 또는 기관 및 개별 사업장, 지점․지사, 본부 등 을 뜻하며, 신청서 및 녹색경영보고서를 작성·제출하여 일정 기준 이상의 평가를 받은 경우 지정받을 수 있음. 당해년도 계획은 녹색기업으로 지정된 기업·기관만 작성함을 원칙으로 함</p>
+<table class="tbl_writer type_view">
+<caption>당해년도 계획 (녹색기업만 작성)</caption>
+<colgroup>
+<col style="width:6%"/>
+<col style="width:14%"/>
+<col style="width:80%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">화학물질 사용량</th>
+<td class="last">
+		                    	
+			                    	0.0077 ton
+			                    	
+				                    	
+				                    	
+					                    	
+					                    	
+					                    	
+				                    		
+				                    		
+				                    		
+				                    			<em>계획과 동일</em>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //의무 17. 화학물질 배출량 -->
+<!-- 자율 18. 토양,소음진동,악취 관리 -->
+<div class="inquiry_cont" id="inquiry18" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											18. 토양.소음진동.악취 관리
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">토양 관리시설 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>토양 관리시설 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">소음진동 관리시설 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>소음진동 관리시설 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<td colspan="4" style="border: 0;padding: 0;">
+</td></tr></tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">악취 관리시설 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>악취 관리시설 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">토양 모니터링 시스템 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>토양 모니터링 시스템 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">소음진동 모니터링 시스템 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>소음진동 모니터링 시스템 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">악취 모니터링 시스템 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>악취 모니터링 시스템 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 18. 토양,소음진동,악취 관리 -->
+<!-- 자율 19. 녹색제품,서비스개발 투자 및 기술도입 -->
+<div class="inquiry_cont" id="inquiry19" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											19. 녹색제품.서비스개발 투자 및 기술도입
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">투자 및 기술도입 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>투자 및 기술도입 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 19. 녹색제품/서비스개발 투자 및 기술도입 -->
+<!-- 자율 20. 친환경설계(에코디자인)현황 -->
+<div class="inquiry_cont" id="inquiry20" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											20. 친환경설계(에코디자인) 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">친환경설계(에코디자인)현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>친환경설계(에코디자인)현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 20. 친환경설계(에코디자인)현황 -->
+<!-- 자율 21. TypeI인증 및 TypeII인증 제품 현황 -->
+<div class="inquiry_cont" id="inquiry21" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											21. TypeI인증 및 TypeII인증 제품 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">Type I 인증제품 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>Type I 인증제품 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">Type II 인증제품 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>Type II 인증제품 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 21. TypeI인증 및 TypeII인증 제품 현황 -->
+<!-- 자율 22. 녹색제품 구매 지침 운영 현황 -->
+<div class="inquiry_cont" id="inquiry22" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											22. 녹색제품.구매 지침 운영 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">녹색구매 지침 운영 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>녹색구매 지침 운영 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 22. 녹색제품 구매 지침 운영 현황 -->
+<!-- 자율 23. 협력업체 환경정보관리 및 환경성평가 -->
+<div class="inquiry_cont" id="inquiry23" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											23. 협력업체 환경정보관리 및 환경성 평가
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">협력업체 환경정보관리 및 환경성평가 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>협력업체 환경정보관리 및 환경성평가 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 23. 협력업체 환경정보관리 및 환경성평가 -->
+<!-- 자율 24. 환경기술 및 교육지원 현황 -->
+<div class="inquiry_cont" id="inquiry24" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											24. 환경기술 및 교육지원 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">환경기술 및 교육지원 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경기술 및 교육지원 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 24. 환경기술 및 교육지원 현황 -->
+<!-- 의무 25. 환경법규 위반 현황 -->
+<div class="inquiry_cont" id="inquiry25" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											의무
+											
+											25. 환경법규 위반 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">환경사고 발생현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경사고 발생현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">민원발생 및 대응현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>민원발생 및 대응현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">배출부과금 체납사례</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>배출부과금 체납사례</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">환경관련 법규 위반사례</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경관련 법규 위반사례</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:84%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //의무 25. 환경법규 위반 현황 -->
+<!-- 자율 26. 환경(지속가능)보고서 발간현황 -->
+<div class="inquiry_cont" id="inquiry26" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											26. 환경(지속가능)보고서 발간 현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">환경보고서 발간 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>환경보고서 발간 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">환경보고서 첨부</th>
+<td class="last">
+</td>
+</tr>
+</tbody>
+</table>
+<div class="tit_wrap mt10">
+<h4 class="type3">지속가능보고서 발간 현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>지속가능보고서 발간 현황</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+<tr>
+<th scope="row">지속가능보고서 첨부</th>
+<td class="last">
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- //자율 26. 환경(지속가능)보고서 발간현황 -->
+<!-- 자율 27. 이해관계자 환경정보 요청 대응현황 -->
+<div class="inquiry_cont" id="inquiry27" style="display: none;"><h3 style="margin-top:30px;margin-bottom:5px;">
+											
+											자율
+											27. 이해관계자 환경정보 요청 대응현황
+											
+											
+											
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+												 
+												 
+											
+											
+										</h3>
+<div class="tit_wrap">
+<h4 class="type3">이해관계자 환경정보 요청 대응현황</h4>
+</div>
+<table class="tbl_writer type_view">
+<caption>이해관계자 환경정보 요청 대응현황 작성하기</caption>
+<colgroup>
+<col style="width:16%"/>
+<col style="width:34%"/>
+<col style="width:16%"/>
+<col style="width:34%"/>
+</colgroup>
+<tbody>
+</tbody>
+</table>
+</div>
+<!-- //자율 27. 이해관계자 환경정보 요청 대응현황 -->
+</div>
+<!-- 통합정보 -->
+<div class="layerwrap" id="combine_info" style="width:1200px;">
+<h3>통합정보</h3>
+<div class="layer_cont">
+<div class="tbl_header">
+<h4 class="h402" id="combine_info_compNm"></h4>
+<!-- <select style="width:160px;">
+	                    <option value="">전체</option>
+	                </select> -->
+<span class="right">
+<a class="btn_mtype2" href="#">인쇄</a>
+</span>
+</div>
+<table class="tbl_list">
+<caption>통합정보</caption>
+<colgroup>
+<col style="width:18%"/>
+<col style="width:17%"/>
+<col style="width:17%"/>
+<col style="width:17%"/>
+<col style="width:17%"/>
+<col style="width:14%"/>
+</colgroup>
+<thead>
+<tr>
+<th colspan="2" rowspan="2" scope="col">항목</th>
+<th id="combine_info_year2" rowspan="2" scope="col"></th>
+<th id="combine_info_year1" rowspan="2" scope="col"></th>
+<th class="th02 last" colspan="2" id="combine_info_year" scope="col"></th>
+</tr>
+<tr>
+<th class="th02" scope="col">실적</th>
+<th class="th02 last" scope="col">전년대비 증가율</th>
+</tr>
+</thead>
+<tbody id="combine_info_table">
+</tbody>
+</table>
+</div>
+<button class="btn_close b-close" type="button">닫기</button>
+</div>
+</div>
+</div></form>
+<!-- //조회/인쇄 팝업 -->
+</div></body></html>
